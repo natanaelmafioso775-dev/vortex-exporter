@@ -1,0 +1,91 @@
+{
+  "version": "1.0",
+  "metadata": {
+    "name": "Login Panel",
+    "author": "Vortex RP",
+    "theme": "dark"
+  },
+  "window": {
+    "type": "window",
+    "title": "Login",
+    "width": 380,
+    "height": 420,
+    "anchor": "center",
+    "closable": true,
+    "draggable": true,
+    "animation": {
+      "enter": "fadeIn",
+      "duration": 300
+    }
+  },
+  "children": [
+    {
+      "type": "title",
+      "text": "Vortex RP",
+      "x": 0,
+      "y": 30,
+      "width": 380,
+      "height": 40,
+      "fontSize": 28,
+      "align": "center",
+      "fontWeight": "bold"
+    },
+    {
+      "type": "text",
+      "text": "Faça login para continuar",
+      "x": 0,
+      "y": 70,
+      "width": 380,
+      "height": 24,
+      "fontSize": 14,
+      "align": "center",
+      "color": "#94a3b8"
+    },
+    {
+      "type": "input",
+      "text": "Email",
+      "x": 30,
+      "y": 120,
+      "width": 320,
+      "height": 42,
+      "placeholder": "Digite seu email",
+      "fontSize": 14,
+      "maxLength": 50
+    },
+    {
+      "type": "input",
+      "text": "Senha",
+      "x": 30,
+      "y": 180,
+      "width": 320,
+      "height": 42,
+      "placeholder": "Digite sua senha",
+      "fontSize": 14,
+      "masked": true,
+      "maxLength": 30
+    },
+    {
+      "type": "button",
+      "text": "Entrar",
+      "x": 30,
+      "y": 250,
+      "width": 320,
+      "height": 46,
+      "fontSize": 16,
+      "fontWeight": "bold",
+      "theme": "primary",
+      "onClick": "handleLogin"
+    },
+    {
+      "type": "text",
+      "text": "Não tem conta? Registre-se",
+      "x": 0,
+      "y": 310,
+      "width": 380,
+      "height": 20,
+      "fontSize": 12,
+      "align": "center",
+      "color": "#94a3b8"
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "name": "vortex-exporter",
+  "version": "1.0.0",
+  "description": "Exportador de UI do Figma para Lua MTA:SA",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:main\" \"npm run dev:renderer\"",
+    "dev:main": "npm run build:main && electron .",
+    "dev:renderer": "vite",
+    "build:main": "tsc -p tsconfig.main.json",
+    "build": "tsc -p tsconfig.main.json && vite build && copy /Y src\\renderer\\preload.js dist\\renderer\\preload.js",
+    "package": "npm run build && electron-builder",
+    "test": "vitest",
+    "lint": "eslint src/"
+  },
+  "keywords": [
+    "figma",
+    "mta",
+    "lua",
+    "exporter"
+  ],
+  "author": "Vortex",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@types/uuid": "^10.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.2",
+    "electron": "^22.3.27",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.7.3",
+    "vite": "^5.4.11",
+    "vitest": "^2.1.8"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "crypto-js": "^4.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "uuid": "^10.0.0"
+  }
+}
