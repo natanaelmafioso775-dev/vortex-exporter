@@ -113,6 +113,25 @@ function parseWindow(node: SceneNode): WindowComponent {
 }
 
 /**
+ * Escaneia recursivamente todos os filhos de um nó em busca de componentes UI
+ */
+function scanChildren(node: SceneNode): SceneNode[] {
+  const found: SceneNode[] = [];
+  if ('children' in node) {
+    const frame = node as FrameNode;
+    for (const child of frame.children) {
+      if (getComponentType(child.name)) {
+        found.push(child);
+      }
+      // Escaneia recursivamente (componentes aninhados)
+      const grandChildren = scanChildren(child);
+      found.push(...grandChildren);
+    }
+  }
+  return found;
+}
+
+/**
  * Parser principal: recebe seleção do Figma e retorna schema Vortex
  */
 export function parseSelection(
@@ -122,40 +141,30 @@ export function parseSelection(
   const errors: string[] = [];
   const warnings: string[] = [];
   let windowNode: SceneNode | null = null;
-  const childrenNodes: SceneNode[] = [];
+  const allUINodes: SceneNode[] = [];
 
-  // Classifica nós
+  // 1. Primeiro, escaneia TODA a seleção + filhos recursivamente
   for (const node of selection) {
     const componentType = getComponentType(node.name);
-
-    if (!componentType) {
-      // Procura recursivamente em children do nó
-      if ('children' in node) {
-        const frame = node as FrameNode;
-        for (const child of frame.children) {
-          const childType = getComponentType(child.name);
-          if (childType === 'window') {
-            if (windowNode) {
-              warnings.push('Múltiplas UI_Window encontradas. Usando a primeira.');
-            } else {
-              windowNode = child;
-            }
-          } else if (childType && childType !== 'window') {
-            childrenNodes.push(child);
-          }
-        }
-      }
-      continue;
-    }
 
     if (componentType === 'window') {
       if (windowNode) {
         warnings.push('Múltiplas UI_Window encontradas. Usando a primeira.');
       } else {
         windowNode = node;
+        // Escaneia TODOS os filhos da window recursivamente
+        const windowChildren = scanChildren(node);
+        allUINodes.push(...windowChildren);
       }
+    } else if (componentType) {
+      allUINodes.push(node);
+      // Escaneia filhos deste nó também
+      const nested = scanChildren(node);
+      allUINodes.push(...nested);
     } else {
-      childrenNodes.push(node);
+      // Nó sem prefixo UI_ — verifica se tem filhos UI
+      const nested = scanChildren(node);
+      allUINodes.push(...nested);
     }
   }
 
@@ -164,6 +173,7 @@ export function parseSelection(
     return {
       schema: {
         version: '1.0',
+        metadata: { name: 'Untitled', author: 'Vortex RP', theme: 'dark' },
         window: { type: 'window', title: 'Untitled', width: 600, height: 400, anchor: 'center' },
         children: [],
       },
@@ -174,8 +184,13 @@ export function parseSelection(
 
   const window = parseWindow(windowNode);
   const children: UIComponent[] = [];
+  const seenIds = new Set<string>();
 
-  for (const childNode of childrenNodes) {
+  for (const childNode of allUINodes) {
+    // Evita duplicatas (mesmo nó pode ser pego de várias formas)
+    if (seenIds.has(childNode.id)) continue;
+    seenIds.add(childNode.id);
+
     const component = parseNode(childNode);
     if (component) {
       children.push(component);
