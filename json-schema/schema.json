@@ -1,0 +1,144 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://vortex-rp.dev/ui-schema/v1.json",
+  "title": "Vortex UI Component Schema",
+  "description": "Schema do formato intermediário entre Figma e Lua para Vortex UI Framework",
+  "version": "1.0.0",
+  "type": "object",
+  "required": ["version", "window"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Versão do schema"
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "author": { "type": "string" },
+        "theme": { "type": "string", "enum": ["dark", "light"] },
+        "description": { "type": "string" }
+      }
+    },
+    "window": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "const": "window" },
+        "title": { "type": "string", "default": "Window" },
+        "width": { "type": "number", "default": 600 },
+        "height": { "type": "number", "default": 400 },
+        "anchor": {
+          "type": "string",
+          "enum": ["center", "top-left", "top-right", "bottom-left", "bottom-right", "top", "bottom", "left", "right"],
+          "default": "center"
+        },
+        "closable": { "type": "boolean", "default": true },
+        "draggable": { "type": "boolean", "default": true },
+        "animation": {
+          "type": "object",
+          "properties": {
+            "enter": { "type": "string", "default": "fadeIn" },
+            "duration": { "type": "number", "default": 300 }
+          }
+        }
+      }
+    },
+    "children": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "$ref": "#/definitions/button" },
+          { "$ref": "#/definitions/input" },
+          { "$ref": "#/definitions/text" },
+          { "$ref": "#/definitions/image" },
+          { "$ref": "#/definitions/svg" }
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "baseComponent": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "visible": { "type": "boolean", "default": true },
+        "alpha": { "type": "number", "default": 255 },
+        "animation": {
+          "type": "object",
+          "properties": {
+            "enter": { "type": "string" },
+            "duration": { "type": "number" }
+          }
+        }
+      }
+    },
+    "button": {
+      "allOf": [{ "$ref": "#/definitions/baseComponent" }],
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "const": "button" },
+        "text": { "type": "string", "default": "Button" },
+        "width": { "type": "number", "default": 200 },
+        "height": { "type": "number", "default": 50 },
+        "theme": { "type": "string", "enum": ["primary", "secondary"], "default": "primary" },
+        "disabled": { "type": "boolean", "default": false }
+      }
+    },
+    "input": {
+      "allOf": [{ "$ref": "#/definitions/baseComponent" }],
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "const": "input" },
+        "placeholder": { "type": "string", "default": "" },
+        "password": { "type": "boolean", "default": false },
+        "maxLength": { "type": "number", "default": 64 },
+        "value": { "type": "string", "default": "" },
+        "width": { "type": "number", "default": 300 },
+        "height": { "type": "number", "default": 44 }
+      }
+    },
+    "text": {
+      "allOf": [{ "$ref": "#/definitions/baseComponent" }],
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "const": "text" },
+        "text": { "type": "string", "default": "" },
+        "color": { "type": "string", "default": "textPrimary" },
+        "scale": { "type": "number", "default": 1 },
+        "font": { "type": "string", "default": "default" },
+        "alignX": { "type": "string", "enum": ["left", "center", "right"], "default": "left" },
+        "alignY": { "type": "string", "enum": ["top", "center", "bottom"], "default": "center" },
+        "wordBreak": { "type": "boolean", "default": false }
+      }
+    },
+    "image": {
+      "allOf": [{ "$ref": "#/definitions/baseComponent" }],
+      "type": "object",
+      "required": ["type", "src"],
+      "properties": {
+        "type": { "type": "string", "const": "image" },
+        "src": { "type": "string" },
+        "width": { "type": "number", "default": 100 },
+        "height": { "type": "number", "default": 100 },
+        "fitMode": { "type": "string", "enum": ["fill", "contain", "cover"], "default": "fill" }
+      }
+    },
+    "svg": {
+      "allOf": [{ "$ref": "#/definitions/baseComponent" }],
+      "type": "object",
+      "required": ["type", "src"],
+      "properties": {
+        "type": { "type": "string", "const": "svg" },
+        "src": { "type": "string" },
+        "width": { "type": "number", "default": 24 },
+        "height": { "type": "number", "default": 24 },
+        "color": { "type": "string", "default": "white" }
+      }
+    }
+  }
+}

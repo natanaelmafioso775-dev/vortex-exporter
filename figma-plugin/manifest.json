@@ -1,0 +1,12 @@
+{
+  "name": "Vortex UI Exporter",
+  "id": "vortex-ui-exporter",
+  "api": "1.0.0",
+  "main": "dist/main.js",
+  "capabilities": [],
+  "enableProposedApi": false,
+  "editorType": ["figma", "dev"],
+  "networkAccess": {
+    "allowedDomains": ["none"]
+  }
+}

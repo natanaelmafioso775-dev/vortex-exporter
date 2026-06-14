@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vortex UI Exporter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+            background: #1a1a24;
+            color: #e0e0e0;
+            padding: 16px;
+            font-size: 12px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #00aaff;
+            margin-bottom: 4px;
+        }
+
+        .header p {
+            font-size: 11px;
+            color: #888;
+        }
+
+        .warning {
+            background: rgba(255, 180, 50, 0.15);
+            border: 1px solid rgba(255, 180, 50, 0.3);
+            border-radius: 6px;
+            padding: 8px 10px;
+            margin-bottom: 12px;
+            font-size: 11px;
+            color: #ffb432;
+            display: none;
+        }
+
+        .warning.visible {
+            display: block;
+        }
+
+        .error {
+            background: rgba(255, 60, 60, 0.15);
+            border: 1px solid rgba(255, 60, 60, 0.3);
+            border-radius: 6px;
+            padding: 8px 10px;
+            margin-bottom: 12px;
+            font-size: 11px;
+            color: #ff4c4c;
+            display: none;
+        }
+
+        .error.visible {
+            display: block;
+        }
+
+        .output-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .output-label {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 6px;
+        }
+
+        #output {
+            flex: 1;
+            background: #0d0d14;
+            border: 1px solid #2a2a38;
+            border-radius: 8px;
+            padding: 10px;
+            font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+            font-size: 11px;
+            color: #c0c0c0;
+            resize: none;
+            min-height: 200px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        button {
+            flex: 1;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-primary {
+            background: #00aaff;
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: #0088cc;
+        }
+
+        .btn-copy {
+            background: #2a2a38;
+            color: #ccc;
+        }
+
+        .btn-copy:hover {
+            background: #3a3a48;
+        }
+
+        .status {
+            font-size: 10px;
+            color: #666;
+            text-align: center;
+            margin-top: 6px;
+            min-height: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🌀 Vortex UI Exporter</h1>
+        <p>Selecione um frame UI_Window + componentes para gerar o código Lua</p>
+    </div>
+
+    <div id="warnings" class="warning"></div>
+    <div id="errors" class="error"></div>
+
+    <div class="output-container">
+        <div class="output-label">📄 Código Lua gerado:</div>
+        <textarea id="output" readonly placeholder="Selecione componentes no Figma..."></textarea>
+    </div>
+
+    <div class="actions">
+        <button id="btnCopy" class="btn-copy">📋 Copiar</button>
+        <button id="btnClose" class="btn-copy">✕ Fechar</button>
+    </div>
+    <div id="status" class="status">Aguardando seleção...</div>
+
+    <script>
+        const outputEl = document.getElementById('output');
+        const warningsEl = document.getElementById('warnings');
+        const errorsEl = document.getElementById('errors');
+        const statusEl = document.getElementById('status');
+
+        function showMessage(type, message) {
+            if (type === 'error') {
+                errorsEl.textContent = message;
+                errorsEl.classList.add('visible');
+                warningsEl.classList.remove('visible');
+            } else if (type === 'warning') {
+                warningsEl.textContent = message;
+                warningsEl.classList.add('visible');
+                errorsEl.classList.remove('visible');
+            }
+        }
+
+        function clearMessages() {
+            errorsEl.classList.remove('visible');
+            warningsEl.classList.remove('visible');
+        }
+
+        // Listen for messages from the plugin (code.ts/main.ts)
+        window.onmessage = function(event) {
+            const msg = event.data.pluginMessage;
+            if (!msg) return;
+
+            switch (msg.type) {
+                case 'json':
+                    clearMessages();
+                    outputEl.value = msg.json;
+                    statusEl.textContent = '✓ Pronto — ' + new Date().toLocaleTimeString();
+                    if (msg.warnings && msg.warnings.length > 0) {
+                        showMessage('warning', msg.warnings.join('\n'));
+                    }
+                    break;
+
+                case 'error':
+                    showMessage('error', msg.message);
+                    outputEl.value = '';
+                    statusEl.textContent = '✗ Erro na exportação';
+                    break;
+
+                case 'schema':
+                    clearMessages();
+                    const jsonText = JSON.stringify(msg.schema, null, 2);
+                    outputEl.value = jsonText;
+                    statusEl.textContent = '✓ JSON gerado — cole no compiler';
+                    if (msg.warnings && msg.warnings.length > 0) {
+                        showMessage('warning', msg.warnings.join('\n'));
+                    }
+                    break;
+            }
+        };
+
+        // Copy button
+        document.getElementById('btnCopy').addEventListener('click', function() {
+            if (!outputEl.value) return;
+            navigator.clipboard.writeText(outputEl.value).then(function() {
+                statusEl.textContent = '📋 Copiado para a área de transferência!';
+                setTimeout(function() {
+                    statusEl.textContent = '✓ Pronto';
+                }, 2000);
+            }).catch(function() {
+                // Fallback: select and copy
+                outputEl.select();
+                document.execCommand('copy');
+                statusEl.textContent = '📋 Copiado!';
+            });
+        });
+
+        // Close button
+        document.getElementById('btnClose').addEventListener('click', function() {
+            parent.postMessage({ pluginMessage: { type: 'close' } }, '*');
+        });
+
+        // Initial state
+        statusEl.textContent = 'Selecione um frame UI_Window no Figma para começar...';
+    </script>
+</body>
+</html>

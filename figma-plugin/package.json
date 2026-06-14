@@ -1,0 +1,15 @@
+{
+  "name": "vortex-figma-plugin",
+  "version": "1.0.0",
+  "description": "Plugin Figma para exportar componentes UI_* para o Vortex UI Framework (MTA)",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "node build.js",
+    "watch": "node build.js --watch"
+  },
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.90.0",
+    "esbuild": "^0.28.1",
+    "typescript": "^5.4.0"
+  }
+}

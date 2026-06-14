@@ -1,0 +1,18 @@
+{
+  "name": "vortex-compiler",
+  "version": "1.0.0",
+  "description": "Compilador JSON → Lua para Vortex UI Framework",
+  "main": "dist/index.js",
+  "bin": {
+    "vortex-compile": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "compile": "node dist/index.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0"
+  }
+}

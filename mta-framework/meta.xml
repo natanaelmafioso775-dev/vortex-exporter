@@ -1,0 +1,18 @@
+<meta>
+    <info name="Vortex UI Framework" author="Vortex RP" version="1.0.0" type="script" description="Sistema de UI moderna para MTA via DX rendering" />
+    <script src="client/utils/Math.lua" type="client" />
+    <script src="client/utils/Color.lua" type="client" />
+    <script src="client/core/EventSystem.lua" type="client" />
+    <script src="client/core/Theme.lua" type="client" />
+    <script src="client/core/Animation.lua" type="client" />
+    <script src="client/core/Responsive.lua" type="client" />
+    <script src="client/core/Renderer.lua" type="client" />
+    <script src="client/core/InputManager.lua" type="client" />
+    <script src="client/components/Window.lua" type="client" />
+    <script src="client/components/Button.lua" type="client" />
+    <script src="client/components/Input.lua" type="client" />
+    <script src="client/components/Text.lua" type="client" />
+    <script src="client/components/Image.lua" type="client" />
+    <script src="client/components/SVG.lua" type="client" />
+    <script src="client/init.lua" type="client" />
+</meta>
