@@ -21,6 +21,7 @@ export function generateRenderCode(
   panelName: string,
   windowConfig: WindowConfig,
   components: VoxelComponent[],
+  backgroundConfig?: WindowConfig,
 ): string {
   const lines: string[] = [];
 
@@ -36,22 +37,98 @@ export function generateRenderCode(
   lines.push('    sx, sy = guiGetScreenSize()');
   lines.push('');
 
+  // Responsive scaling (baseado em 1366x768)
+  const baseW = windowConfig.baseWidth || windowConfig.width;
+  const baseH = windowConfig.baseHeight || windowConfig.height;
+  const hasResponsiveScale: boolean = !!(windowConfig.responsive !== false && (windowConfig.baseWidth || windowConfig.baseHeight));
+
+  if (hasResponsiveScale && (baseW !== windowConfig.width || baseH !== windowConfig.height)) {
+    lines.push(`    -- Responsive scale (base: ${baseW}x${baseH})`);
+    lines.push(`    local scale = math.min(sx / ${baseW}, sy / ${baseH})`);
+    lines.push('');
+  }
+
   // Window positioning
   const winW = Math.round(windowConfig.width);
   const winH = Math.round(windowConfig.height);
 
   lines.push(`    -- ${panelName} Window (${winW}x${winH})`);
-  lines.push(generateWindowPositionCode(windowConfig, winW, winH));
+  const posCode = generateWindowPositionCode(windowConfig, winW, winH, hasResponsiveScale);
+  lines.push(posCode);
   lines.push('');
 
-  // Window background with effects
-  lines.push('    -- Window background');
-  lines.push(`    if theme.background then`);
-  lines.push(`        dxDrawRectangle(0, 0, sx, sy, theme.background)`);
-  lines.push(`    end`);
+  // Background overlay (only if UI_Background was provided)
+  if (backgroundConfig) {
+    const bgFills = backgroundConfig.backgroundFills || [];
+    if (bgFills.length > 0) {
+      lines.push('    -- Background overlay');
+      for (const fill of bgFills) {
+        if (fill.type === 'solid' && fill.color) {
+          const a = Math.round((fill.opacity || 1) * 255);
+          lines.push(`    dxDrawRectangle(0, 0, sx, sy, tocolor(${fill.color.r}, ${fill.color.g}, ${fill.color.b}, ${Math.min(a, 255)}), true)`);
+        }
+      }
+      lines.push('');
+    }
+  }
+
+  // Window alpha (opacidade)
+  const winAlpha = windowConfig.alpha !== undefined ? Math.round(windowConfig.alpha * 255) : 255;
+
+  // Window backgroundFills (custom fill from Figma — solid/gradient)
+  const winFills = windowConfig.backgroundFills || [];
+  if (winFills.length > 0) {
+    for (const fill of winFills) {
+      if (fill.type === 'solid' && fill.color) {
+        const a = Math.round((fill.opacity || 1) * 255);
+        lines.push(`    dxDrawRectangle(winX, winY, ${winW}, ${winH}, tocolor(${fill.color.r}, ${fill.color.g}, ${fill.color.b}, ${Math.min(a, 255)}), true)`);
+      }
+    }
+  } else {
+    lines.push(`    dxDrawRectangle(winX, winY, ${winW}, ${winH}, tocolor(30, 39, 58, ${winAlpha < 255 ? winAlpha : 255}), true)`);
+  }
+
+  // Window corner radius
+  if (windowConfig.cornerRadius && windowConfig.cornerRadius > 0) {
+    renderCornerRadius('winX', 'winY', `${winW}`, `${winH}`, windowConfig.cornerRadius, 'theme.background', lines, '    ');
+  }
   lines.push('');
-  lines.push(`    dxDrawRectangle(winX, winY, ${winW}, ${winH}, theme.surface, true)`);
-  lines.push('');
+
+  // Window strokes (borders)
+  if (windowConfig.strokes && windowConfig.strokes.length > 0) {
+    lines.push('    -- Window strokes');
+    for (const s of windowConfig.strokes) {
+      const w = Math.round(s.weight);
+      const c = s.paint?.color || { r: 255, g: 255, b: 255, a: 255 };
+      const a = c.a <= 1 ? Math.round(c.a * 255) : Math.min(c.a, 255);
+      lines.push(`    dxDrawRectangle(winX, winY, ${winW}, ${w}, tocolor(${c.r}, ${c.g}, ${c.b}, ${a}), true)`);
+      lines.push(`    dxDrawRectangle(winX, winY + ${winH - w}, ${winW}, ${w}, tocolor(${c.r}, ${c.g}, ${c.b}, ${a}), true)`);
+      lines.push(`    dxDrawRectangle(winX, winY + ${w}, ${w}, ${winH - w * 2}, tocolor(${c.r}, ${c.g}, ${c.b}, ${a}), true)`);
+      lines.push(`    dxDrawRectangle(winX + ${winW - w}, winY + ${w}, ${w}, ${winH - w * 2}, tocolor(${c.r}, ${c.g}, ${c.b}, ${a}), true)`);
+    }
+    lines.push('');
+  }
+
+  // Window effects (shadow, blur, glow)
+  if (windowConfig.effects && windowConfig.effects.length > 0) {
+    lines.push('    -- Window effects');
+    for (const eff of windowConfig.effects) {
+      if (eff.type === 'drop-shadow' || eff.type === 'inner-shadow') {
+        const c = eff.color || { r: 0, g: 0, b: 0, a: 64 };
+        const ox = Math.round(eff.offsetX);
+        const oy = Math.round(eff.offsetY);
+        const a = c.a <= 1 ? Math.round(c.a * 255) : Math.min(c.a, 255);
+        lines.push(`    dxDrawRectangle(winX + ${ox}, winY + ${oy}, ${winW}, ${winH}, tocolor(${c.r}, ${c.g}, ${c.b}, ${Math.min(a, 100)}), true)`);
+        if (eff.radius > 4) {
+          lines.push(`    dxDrawRectangle(winX + ${ox + 2}, winY + ${oy + 2}, ${winW}, ${winH}, tocolor(${c.r}, ${c.g}, ${c.b}, ${Math.min(a, 60)}), true)`);
+        }
+      } else if (eff.type === 'background-blur') {
+        const r = Math.round(eff.radius);
+        lines.push(`    dxDrawRectangle(winX - ${r}, winY - ${r}, ${winW + r * 2}, ${winH + r * 2}, tocolor(0, 0, 0, ${Math.min(r * 8, 40)}), true)`);
+      }
+    }
+    lines.push('');
+  }
 
   // Window title
   if (windowConfig.title) {
@@ -73,7 +150,16 @@ export function generateRenderCode(
   return lines.join('\n');
 }
 
-function generateWindowPositionCode(windowConfig: WindowConfig, winW: number, winH: number): string {
+function generateWindowPositionCode(windowConfig: WindowConfig, winW: number, winH: number, useScale: boolean = false): string {
+  const scalePrefix = useScale ? ' * scale' : '';
+
+  // Se tem posição X/Y explícita (em pixels), usa coordenadas absolutas
+  if (windowConfig.x !== undefined || windowConfig.y !== undefined) {
+    const x = windowConfig.x ?? 0;
+    const y = windowConfig.y ?? 0;
+    return `    local winX = ${Math.round(x)}\n    local winY = ${Math.round(y)}`;
+  }
+
   const anchor = windowConfig.anchor || 'center';
   switch (anchor) {
     case 'center':
@@ -191,6 +277,17 @@ function escapeLuaString(str: string): string {
     .replace(/\n/g, '\\n')
     .replace(/\r/g, '\\r')
     .replace(/\t/g, '\\t');
+}
+
+function renderCornerRadius(vx: string, vy: string, vw: string, vh: string, radius: number, bgColor: string, lines: string[], indent: string): void {
+  if (!radius || radius <= 0) return;
+  const r = Math.round(radius);
+  lines.push(`${indent}-- Corner radius: ${r}px (simulated with circles)`);
+  // 4 círculos da cor do fundo nos cantos para "cortar" as pontas
+  lines.push(`${indent}dxDrawCircle(${vx} + ${r}, ${vy} + ${r}, ${r}, 180, 270, ${bgColor}, 16)`);
+  lines.push(`${indent}dxDrawCircle(${vx} + ${vw} - ${r}, ${vy} + ${r}, ${r}, 270, 360, ${bgColor}, 16)`);
+  lines.push(`${indent}dxDrawCircle(${vx} + ${r}, ${vy} + ${vh} - ${r}, ${r}, 90, 180, ${bgColor}, 16)`);
+  lines.push(`${indent}dxDrawCircle(${vx} + ${vw} - ${r}, ${vy} + ${vh} - ${r}, ${r}, 0, 90, ${bgColor}, 16)`);
 }
 
 function renderEffects(effects: VoxelEffect[], vx: string, vy: string, vw: string, vh: string, lines: string[], indent: string): void {
@@ -489,6 +586,14 @@ function renderButton(btn: VoxelButton, lines: string[], indent: string): void {
 
   // Background
   lines.push(`${indent}dxDrawRectangle(${vn}X, ${vn}Y, ${vn}W, ${vn}H, ${vn}Color, true)`);
+
+  // Corner radius
+  if (btn.cornerRadius && btn.cornerRadius > 0) {
+    const btnBgColor = btn.theme === 'primary' ? 'theme.primary' 
+      : btn.theme === 'secondary' ? 'theme.secondary' 
+      : 'theme.surfaceAlt';
+    renderCornerRadius(`${vn}X`, `${vn}Y`, `${vn}W`, `${vn}H`, btn.cornerRadius, 'theme.background', lines, indent);
+  }
 
   // Icon
   if (btn.icon) {

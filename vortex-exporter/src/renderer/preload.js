@@ -24,4 +24,6 @@ contextBridge.exposeInMainWorld('vortex', {
   importJson: (data) => ipcRenderer.invoke('import-json', data),
   // Select a .json file from disk
   selectJsonFile: () => ipcRenderer.invoke('select-json-file'),
+  // Compile JSON text directly (paste in editor)
+  compileJsonText: (data) => ipcRenderer.invoke('compile-json-text', data),
 });

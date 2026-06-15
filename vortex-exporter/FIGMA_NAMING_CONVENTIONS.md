@@ -1,209 +1,308 @@
 # 📐 Convenções de Nomenclatura no Figma — Vortex Exporter
 
-Este guia documenta **exatamente** como nomear layers, frames, grupos e componentes no Figma para que o Vortex Exporter reconheça e compile corretamente para Lua MTA.
+Este guia documenta **exatamente** como nomear layers no Figma para que o Vortex Exporter reconheça e compile para Lua MTA.
+
+---
+
+## 🔥 REFERÊNCIA RÁPIDA (copia e cola)
+
+### Estrutura básica de um painel
+
+```
+📁 Página
+   └── 🖼 UI_Window(Login) anchor=center theme=dark
+        ├── UI_Title(Vortex RP) align=center
+        ├── UI_Input(Email) placeholder="Digite seu email"
+        ├── UI_Input(Senha) placeholder="Digite sua senha" masked=true
+        ├── UI_Button(Entrar) theme=primary hover
+        └── UI_Text(Não tem conta?) fontSize=12 align=center
+```
+
+### Com overlay (fundo escuro opcional)
+
+```
+📁 Página
+   ├── 🖼 UI_Background   ← overlay opcional atrás da window
+   └── 🖼 UI_Window(Login) anchor=center
+```
+
+### Sem overlay
+
+```
+📁 Página
+   └── 🖼 UI_Window(Login) anchor=center
+```
+
+### Centralizar na tela
+
+```
+UI_Window(Nome do Painel) anchor=center
+```
+
+### Criar uma área com scroll
+
+```
+📁 Página
+   └── 🖼 UI_Window(Shop) anchor=center
+        ├── UI_Title(Loja) align=center
+        ├── 🖼 UI_Scroll scrollbar=thin   ← container com scroll
+        │    ├── UI_Button(Item 1)
+        │    ├── UI_Button(Item 2)
+        │    ├── UI_Button(Item 3)
+        │    └── UI_Button(Item 4)
+        └── UI_Text(Total) fontSize=12
+```
+
+O `UI_Scroll` precisa ser um **Frame** no Figma com altura menor que o conteúdo interno para o scroll aparecer. ⚠️ Scroll com mouse wheel precisa ser implementado manualmente no Lua gerado.
+
+---
+
+### Posicionar em coordenadas fixas (pixels)
+
+```
+UI_Window(Nome) x=760 y=231
+```
+
+> ⚠️ Só funciona na resolução que você definiu. Prefira `anchor=` para suportar qualquer resolução.
 
 ---
 
 ## Índice
 
-1. [Regra de Ouro](#1-regra-de-ouro)
-2. [Estrutura Hierárquica no Figma](#2-estrutura-hierárquica-no-figma)
-3. [Tabela Completa de Prefixos](#3-tabela-completa-de-prefixos)
-4. [Propriedades Opcionais (via nome)](#4-propriedades-opcionais-via-nome)
-5. [Animações](#5-animações)
-6. [Temas](#6-temas)
-7. [Ícones](#7-ícones)
-8. [Textos e Labels](#8-textos-e-labels)
-9. [Dropdowns e Listas](#9-dropdowns-e-listas)
-10. [Hierarquia Visual Final (Lua)](#10-hierarquia-visual-final-lua)
-11. [Checklist de Validação](#11-checklist-de-validação)
+1. [Tamanho do Canvas](#0-tamanho-do-canvas-importante)
+2. [Regra de Ouro](#1-regra-de-ouro)
+3. [Tabela Completa de Prefixos](#2-tabela-completa-de-prefixos)
+4. [Posicionamento e Âncora](#3-posicionamento-e-âncora)
+5. [Propriedades Opcionais (via nome)](#4-propriedades-opcionais-via-nome)
+6. [Animações](#5-animações)
+7. [Temas](#6-temas)
+8. [Ícones](#7-ícones)
+9. [Textos e Labels](#8-textos-e-labels)
+10. [Dropdowns e Listas](#9-dropdowns-e-listas)
+11. [Escala Responsiva](#10-escala-responsiva)
+12. [Checklist de Validação](#11-checklist-de-validação)
+
+---
+
+## 0. Tamanho do Canvas (IMPORTANTE)
+
+**Use um Frame de referência `1366 × 768` no Figma.**
+
+```
+✅ Frame: 1366 × 768
+❌ Frame: 1920 × 1080
+```
+
+**Por quê?** O GTA San Andreas / MTA roda principalmente em resoluções HD (1366×768) ou 720p (1280×720). Painéis desenhados em Full HD (1920×1080) ficam pequenos demais nessas resoluções.
+
+### Tamanhos recomendados para painéis comuns:
+
+| Tipo de Painel | Largura | Altura |
+|---------------|---------|--------|
+| Login / Registro | 380–420 | 400–500 |
+| Inventário / Mochila | 600–700 | 500–600 |
+| Loja / Compras | 700–800 | 550–650 |
+| Configurações | 500–600 | 450–550 |
+| Banco / ATM | 350–400 | 350–450 |
+| Seleção de Personagem | 800–900 | 500–600 |
+| Chat / Mensagens | 400–500 | 350–450 |
 
 ---
 
 ## 1. Regra de Ouro
 
-**Todo componente interativo ou visível DEVE começar com o prefixo `UI_`.**
+**Todo layer DEVE começar com `UI_` para ser reconhecido.**
 
 ```
 ✅ UI_Button(Entrar)
 ✅ UI_Input(Email)
 ✅ UI_Title(Bem-vindo)
 ✅ UI_Window(Login)
+✅ UI_Background
 ❌ Button(Entrar)
-❌ MeuBotao
 ❌ Input1
+❌ FundoEscuro
 ```
 
-> O sistema de detecção usa `name.startsWith(rule.prefix)` — sem o prefixo, o componente simplesmente **não é reconhecido**.
+> O sistema de detecção usa `name.startsWith(prefix)` — sem o prefixo `UI_`, **não funciona**.
 
 ---
 
-## 2. Estrutura Hierárquica no Figma
-
-```
-📁 Página (Frame raiz)
-   └── 🖼 UI_Window(Nome)          ← Janela principal
-        ├── UI_Title(Titulo)       ← Título
-        ├── UI_Input(Email)        ← Campo de input
-        ├── UI_Input(Senha)        ← Campo de senha
-        ├── UI_Button(Entrar)      ← Botão
-        └── UI_Text(Status)        ← Texto de feedback
-```
-
-> A **raiz** do seu design deve ser um **Frame** do Figma com o prefixo `UI_Window`.
-
----
-
-## 3. Tabela Completa de Prefixos
+## 2. Tabela Completa de Prefixos
 
 ### 🪟 Container / Janela
 
 | Prefixo | Tipo Gerado | Obrigatório | Observação |
 |---------|------------|-------------|------------|
-| `UI_Window` | `window` | ✅ Frame raiz | Deve ser um **FRAME** no Figma |
+| `UI_Window` | `window` | ✅ Frame principal | Deve ser um **FRAME** no Figma |
+| `UI_Background` | `background` | ❌ | Overlay opcional atrás da window |
 | `UI_Frame` | `group` | ❌ | Agrupador visual |
 
 ### 🔘 Botões
 
-| Prefixo | Tipo Gerado | Uso |
-|---------|------------|-----|
+| Prefixo | Tipo Gerado | Cópia |
+|---------|------------|-------|
 | `UI_Button` | `button` | ✅ Padrão |
 | `Btn` | `button` | ✅ Alternativa curta |
 
 ### ⌨️ Inputs
 
-| Prefixo | Tipo Gerado | Uso |
-|---------|------------|-----|
-| `UI_Input` | `input` | ✅ Padrão com todas as props |
-| `UI_TextInput` | `input` | ✅ Alternativa simples |
+| Prefixo | Tipo Gerado | Cópia |
+|---------|------------|-------|
+| `UI_Input` | `input` | ✅ Padrão |
+| `UI_TextInput` | `input` | ✅ Alternativa |
 
 ### 📝 Textos
 
-| Prefixo | Tipo Gerado | Uso |
-|---------|------------|-----|
+| Prefixo | Tipo Gerado | Cópia |
+|---------|------------|-------|
 | `UI_Text` | `text` | ✅ Texto genérico |
 | `UI_Label` | `text` | ✅ Rótulo de campo |
 | `UI_Title` | `text` | ✅ Título / Header |
 
 ### 🖼️ Imagens
 
-| Prefixo | Tipo Gerado | Uso |
-|---------|------------|-----|
+| Prefixo | Tipo Gerado | Cópia |
+|---------|------------|-------|
 | `UI_Image` | `image` | ✅ Padrão |
 | `UI_Img` | `image` | ✅ Alternativa curta |
 
 ### ✏️ SVG
 
-| Prefixo | Tipo Gerado | Uso |
-|---------|------------|-----|
+| Prefixo | Tipo Gerado | Cópia |
+|---------|------------|-------|
 | `UI_SVG` | `svg` | ✅ Padrão |
 | `UI_Svg` | `svg` | ✅ Alternativa |
 
-### 🔽 Dropdown / Select
+### 🔽 Dropdown
 
-| Prefixo | Tipo Gerado | Uso |
-|---------|------------|-----|
+| Prefixo | Tipo Gerado | Cópia |
+|---------|------------|-------|
 | `UI_Dropdown` | `dropdown` | ✅ Completo |
 | `UI_Select` | `dropdown` | ✅ Alternativa |
 
 ### ☑️ Checkbox
 
-| Prefixo | Tipo Gerado | Uso |
-|---------|------------|-----|
+| Prefixo | Tipo Gerado | Cópia |
+|---------|------------|-------|
 | `UI_Checkbox` | `checkbox` | ✅ Padrão |
 | `UI_Check` | `checkbox` | ✅ Alternativa |
 
-### ⚪ Radio Button
+### ⚪ Radio
 
-| Prefixo | Tipo Gerado | Uso |
-|---------|------------|-----|
+| Prefixo | Tipo Gerado | Cópia |
+|---------|------------|-------|
 | `UI_Radio` | `radio` | ✅ Padrão |
 
-### 🔄 Switch / Toggle
+### 🔄 Switch
 
-| Prefixo | Tipo Gerado | Uso |
-|---------|------------|-----|
+| Prefixo | Tipo Gerado | Cópia |
+|---------|------------|-------|
 | `UI_Switch` | `switch` | ✅ Padrão |
 | `UI_Toggle` | `switch` | ✅ Alternativa |
 
-### 🎚️ Slider / Range
+### 🎚️ Slider
 
-| Prefixo | Tipo Gerado | Uso |
-|---------|------------|-----|
+| Prefixo | Tipo Gerado | Cópia |
+|---------|------------|-------|
 | `UI_Slider` | `slider` | ✅ Padrão |
 | `UI_Range` | `slider` | ✅ Alternativa |
 
-### ⏳ Progress / Loading
+### ⏳ Progress
 
-| Prefixo | Tipo Gerado | Uso |
-|---------|------------|-----|
+| Prefixo | Tipo Gerado | Cópia |
+|---------|------------|-------|
 | `UI_Progress` | `progress` | ✅ Barra de progresso |
-| `UI_Loading` | `progress` | ✅ Loading spinner/bar |
+| `UI_Loading` | `progress` | ✅ Loading |
 
 ### 📑 Tabs
 
-| Prefixo | Tipo Gerado | Uso |
-|---------|------------|-----|
-| `UI_Tabs` | `tabs` | ✅ Abas de navegação |
+| Prefixo | Tipo Gerado | Cópia |
+|---------|------------|-------|
+| `UI_Tabs` | `tabs` | ✅ Abas |
 
 ### 💡 Tooltip
 
-| Prefixo | Tipo Gerado | Uso |
-|---------|------------|-----|
+| Prefixo | Tipo Gerado | Cópia |
+|---------|------------|-------|
 | `UI_Tooltip` | `tooltip` | ✅ Dica flutuante |
 
 ### 📜 ScrollView
 
-| Prefixo | Tipo Gerado | Uso |
-|---------|------------|-----|
+| Prefixo | Tipo Gerado | Cópia |
+|---------|------------|-------|
 | `UI_Scroll` | `scrollview` | ✅ Alternativa curta |
 | `UI_ScrollView` | `scrollview` | ✅ Padrão |
 
 ---
 
+## 3. Posicionamento e Âncora
+
+### Âncoras (recomendado — funciona em qualquer resolução)
+
+Use `anchor=` no nome da `UI_Window`:
+
+| Âncora | Posição na tela | Cópia |
+|--------|----------------|-------|
+| `center` | Centro da tela | `UI_Window(Login) anchor=center` |
+| `left` | Esquerda, centro vertical | `UI_Window(Shop) anchor=left` |
+| `right` | Direita, centro vertical | `UI_Window(Config) anchor=right` |
+| `top` | Topo, centro horizontal | `UI_Window(Top) anchor=top` |
+| `bottom` | Baixo, centro horizontal | `UI_Window(Bottom) anchor=bottom` |
+| `topleft` | Canto superior esquerdo | `UI_Window(Info) anchor=topleft` |
+| `topright` | Canto superior direito | `UI_Window(Notif) anchor=topright` |
+| `bottomleft` | Canto inferior esquerdo | `UI_Window(Minimap) anchor=bottomleft` |
+| `bottomright` | Canto inferior direito | `UI_Window(Stats) anchor=bottomright` |
+
+### Coordenadas X/Y em pixels
+
+Use `x=` e `y=` para posicionamento fixo:
+
+```
+UI_Window(Login) x=760 y=231
+```
+
+> ⚠️ Só funciona na resolução que você desenhou. Prefira `anchor=` pra ser universal.
+
+### Sobrescrita de posição
+
+Se você usar **ambos** (`x=` + `anchor=`), o `x=`/`y=` tem prioridade.
+
+---
+
 ## 4. Propriedades Opcionais (via nome)
 
-Você pode passar propriedades extras no **nome do layer** usando estes formatos:
-
-### Formato `prop=valor`
+Passe propriedades no nome do layer:
 
 ```
-UI_Button(Entrar) fontSize=16 fontWeight=bold
-UI_Input(Email) placeholder="Digite seu email" maxLength=50
-UI_Window(Login) theme=dark
+prop=valor
+prop:valor
 ```
 
-### Formato `prop:valor`
-
-```
-UI_Button: text=Entrar onClick=handleLogin
-UI_Title: text=Bem-vindo align=center
-```
-
-### Tabela de Propriedades por Tipo
-
-#### `UI_Window` / `UI_Frame`
+### `UI_Window` / `UI_Frame`
 
 | Propriedade | Descrição | Exemplo |
 |------------|-----------|---------|
 | `title` | Título da janela | `title=Login` |
 | `theme` | Tema visual | `theme=dark` |
 | `anchor` | Ancoragem na tela | `anchor=center` |
-| `responsive` | Se adapta à resolução | `responsive=true` |
-| `movable` | Se pode ser arrastada | `movable=true` |
-| `resizable` | Se pode ser redimensionada | `resizable=false` |
-| `layout` | Layout interno (para Frame) | `layout=vertical` |
+| `x` | Posição X em pixels | `x=760` |
+| `y` | Posição Y em pixels | `y=231` |
+| `responsive` | Escala automática | `responsive=true` |
+| `movable` | Arrastável | `movable=true` |
+| `resizable` | Redimensionável | `resizable=false` |
+| `layout` | Layout interno | `layout=vertical` |
 | `gap` | Espaçamento entre filhos | `gap=12` |
 
-#### `UI_Button` / `Btn`
+### `UI_Button` / `Btn`
 
 | Propriedade | Descrição | Exemplo |
 |------------|-----------|---------|
 | `text` | Texto do botão | `text=Entrar` |
-| `animation` | Animação de entrada | `animation=fadein` |
-| `theme` | Tema do botão | `theme=primary` |
+| `animation` | Animação | `animation=fadein` |
+| `theme` | Tema | `theme=primary` |
 | `onClick` | Evento de clique | `onClick=handleLogin` |
-| `hoverColor` | Cor no hover (hex) | `hoverColor=#ff0000` |
+| `hoverColor` | Cor no hover | `hoverColor=#ff0000` |
 | `icon` | Ícone inline | `icon=home` |
 | `iconPos` | Posição do ícone | `iconPos=left` |
 | `loading` | Estado de loading | `loading=true` |
@@ -211,40 +310,39 @@ UI_Title: text=Bem-vindo align=center
 | `fontWeight` | Peso da fonte | `fontWeight=bold` |
 | `disabled` | Estado desabilitado | `disabled=true` |
 
-#### `UI_Input` / `UI_TextInput`
+### `UI_Input` / `UI_TextInput`
 
 | Propriedade | Descrição | Exemplo |
 |------------|-----------|---------|
 | `placeholder` | Texto de placeholder | `placeholder="Digite..."` |
-| `masked` | Se é campo de senha | `masked=true` |
+| `masked` | Campo de senha | `masked=true` |
 | `maxLength` | Limite de caracteres | `maxLength=30` |
 | `defaultValue` | Valor inicial | `defaultValue=user@email.com` |
 | `animation` | Animação | `animation=slideleft` |
 | `theme` | Tema visual | `theme=outline` |
 | `prefix` | Texto antes do valor | `prefix=R$` |
 | `suffix` | Texto depois do valor | `suffix=kg` |
-| `type` | Tipo de input | `type=email` |
 | `multiline` | Multi-linha | `multiline=true` |
 | `autofocus` | Foco automático | `autofocus=true` |
-| `align` | Alinhamento do texto | `align=center` |
+| `align` | Alinhamento | `align=center` |
 
-#### `UI_Text` / `UI_Label` / `UI_Title`
+### `UI_Text` / `UI_Label` / `UI_Title`
 
 | Propriedade | Descrição | Exemplo |
 |------------|-----------|---------|
-| `text` | Conteúdo do texto | `text="Olá mundo"` |
-| `fontSize` | Tamanho da fonte | `fontSize=24` |
+| `text` | Conteúdo | `text="Olá mundo"` |
+| `fontSize` | Tamanho | `fontSize=24` |
 | `align` | Alinhamento | `align=center` |
-| `color` | Cor (hexadecimal) | `color=#ffffff` |
+| `color` | Cor (hex) | `color=#ffffff` |
 | `animation` | Animação | `animation=fadein` |
-| `fontFamily` | Família da fonte | `fontFamily=Arial` |
+| `fontFamily` | Família | `fontFamily=Arial` |
 | `fontWeight` | Peso | `fontWeight=bold` |
-| `textCase` | Caixa do texto | `textCase=uppercase` |
+| `textCase` | Caixa | `textCase=uppercase` |
 | `decoration` | Decoração | `decoration=underline` |
-| `letterSpacing` | Espaçamento entre letras | `letterSpacing=2` |
+| `letterSpacing` | Espaçamento letras | `letterSpacing=2` |
 | `lineHeight` | Altura da linha | `lineHeight=1.5` |
 
-#### `UI_Image` / `UI_Img`
+### `UI_Image` / `UI_Img`
 
 | Propriedade | Descrição | Exemplo |
 |------------|-----------|---------|
@@ -252,52 +350,52 @@ UI_Title: text=Bem-vindo align=center
 | `animation` | Animação | `animation=zoomin` |
 | `scaleMode` | Modo de escala | `scaleMode=cover` |
 
-#### `UI_SVG` / `UI_Svg`
+### `UI_SVG` / `UI_Svg`
 
 | Propriedade | Descrição | Exemplo |
 |------------|-----------|---------|
 | `src` | Caminho do SVG | `src=icon.svg` |
 | `animation` | Animação | `animation=rotate` |
 
-#### `UI_Dropdown` / `UI_Select`
+### `UI_Dropdown` / `UI_Select`
 
 | Propriedade | Descrição | Exemplo |
 |------------|-----------|---------|
-| `text` | Label do dropdown | `text=Selecione` |
-| `options` | Opções disponíveis | `options=[opcao1,opcao2]` |
+| `text` | Label | `text=Selecione` |
+| `options` | Opções | `options=[A,B,C]` |
 | `default` | Valor padrão | `default=opcao1` |
 | `searchable` | Com busca | `searchable=true` |
-| `maxVisible` | Máx itens visíveis | `maxVisible=5` |
+| `maxVisible` | Máx visíveis | `maxVisible=5` |
 | `theme` | Tema | `theme=primary` |
 
-#### `UI_Checkbox` / `UI_Check`
+### `UI_Checkbox` / `UI_Check`
 
 | Propriedade | Descrição | Exemplo |
 |------------|-----------|---------|
-| `text` | Label do checkbox | `text="Aceito termos"` |
+| `text` | Label | `text="Aceito termos"` |
 | `default` | Estado inicial | `default=true` |
 | `theme` | Tema | `theme=primary` |
-| `fontSize` | Tamanho do texto | `fontSize=14` |
+| `fontSize` | Tamanho texto | `fontSize=14` |
 
-#### `UI_Radio`
+### `UI_Radio`
 
 | Propriedade | Descrição | Exemplo |
 |------------|-----------|---------|
-| `text` | Label do radio | `text=Opção A` |
+| `text` | Label | `text=Opção A` |
 | `default` | Estado inicial | `default=true` |
 | `group` | Grupo de radios | `group=sexo` |
 | `theme` | Tema | `theme=primary` |
 
-#### `UI_Switch` / `UI_Toggle`
+### `UI_Switch` / `UI_Toggle`
 
 | Propriedade | Descrição | Exemplo |
 |------------|-----------|---------|
-| `text` | Label do switch | `text=Notificações` |
+| `text` | Label | `text=Notificações` |
 | `default` | Estado inicial | `default=true` |
 | `theme` | Tema | `theme=primary` |
-| `activeColor` | Cor quando ativo | `activeColor=#00ff00` |
+| `activeColor` | Cor ativo | `activeColor=#00ff00` |
 
-#### `UI_Slider` / `UI_Range`
+### `UI_Slider` / `UI_Range`
 
 | Propriedade | Descrição | Exemplo |
 |------------|-----------|---------|
@@ -305,152 +403,134 @@ UI_Title: text=Bem-vindo align=center
 | `max` | Valor máximo | `max=100` |
 | `default` | Valor inicial | `default=50` |
 | `step` | Incremento | `step=5` |
-| `suffix` | Sufixo do valor | `suffix=%` |
-| `prefix` | Prefixo do valor | `prefix=R$` |
+| `suffix` | Sufixo | `suffix=%` |
+| `prefix` | Prefixo | `prefix=R$` |
 | `orientation` | Orientação | `orientation=vertical` |
 | `showValue` | Mostrar valor | `showValue=true` |
-| `format` | Formato do valor | `format=integer` |
 
-#### `UI_Progress` / `UI_Loading`
+### `UI_Progress` / `UI_Loading`
 
 | Propriedade | Descrição | Exemplo |
 |------------|-----------|---------|
-| `min` | Valor mínimo | `min=0` |
-| `max` | Valor máximo | `max=100` |
+| `min` | Mínimo | `min=0` |
+| `max` | Máximo | `max=100` |
 | `default` | Valor inicial | `default=50` |
-| `label` | Texto de label | `label=Carregando...` |
-| `variant` | Variante visual | `variant=determinate` |
-| `thickness` | Espessura da barra | `thickness=8` |
+| `label` | Texto | `label=Carregando...` |
+| `variant` | Variante | `variant=determinate` |
+| `thickness` | Espessura | `thickness=8` |
 | `showLabel` | Mostrar label | `showLabel=true` |
 | `color` | Cor da barra | `color=#00ff00` |
 | `trackColor` | Cor do fundo | `trackColor=#333333` |
 
-#### `UI_Tabs`
+### `UI_Tabs`
 
 | Propriedade | Descrição | Exemplo |
 |------------|-----------|---------|
-| `tabs` | Nomes das abas | `tabs=[Perfil,Config,Ajuda]` |
+| `tabs` | Nomes das abas | `tabs=[Perfil,Config]` |
 | `default` | Aba inicial | `default=0` |
-| `position` | Posição das abas | `position=top` |
+| `position` | Posição | `position=top` |
 | `theme` | Tema | `theme=primary` |
 
-#### `UI_Tooltip`
+### `UI_Tooltip`
 
 | Propriedade | Descrição | Exemplo |
 |------------|-----------|---------|
-| `text` | Texto do tooltip | `text="Clique para salvar"` |
+| `text` | Texto | `text="Clique para salvar"` |
 | `position` | Posição | `position=top` |
-| `delay` | Delay para aparecer (ms) | `delay=500` |
+| `delay` | Delay (ms) | `delay=500` |
 | `maxWidth` | Largura máxima | `maxWidth=200` |
 | `theme` | Tema | `theme=dark` |
 
-#### `UI_Scroll` / `UI_ScrollView`
+### `UI_Scroll` / `UI_ScrollView`
 
 | Propriedade | Descrição | Exemplo |
 |------------|-----------|---------|
-| `scrollbar` | Estilo da scrollbar | `scrollbar=thin` |
+| `scrollbar` | Estilo | `scrollbar=thin` |
 | `theme` | Tema | `theme=dark` |
 
 ---
 
 ## 5. Animações
 
-Adicione palavras-chave de animação no nome do componente:
+Adicione no nome do componente:
 
-### Fades
+```
+UI_Button(Entrar) fadein
+UI_Button hover
+UI_Window(Login) fadein scale
+UI_Input slideleft
+```
+
 | Palavra-chave | Animação Gerada |
 |---------------|----------------|
 | `fadein` | `fadeIn` |
 | `fadeout` | `fadeOut` |
 | `fade` | `fadeIn` |
-
-### Hover
-| Palavra-chave | Animação Gerada |
-|---------------|----------------|
-| `hoverscale` | `hoverScale` |
+| `hover` / `hoverscale` | `hoverScale` |
 | `hovercolor` | `hoverColor` |
-| `hover` | `hoverScale` |
-
-### Slides
-| Palavra-chave | Animação Gerada |
-|---------------|----------------|
 | `slideleft` | `slideLeft` |
 | `slideright` | `slideRight` |
 | `slideup` | `slideUp` |
 | `slidedown` | `slideDown` |
 | `slide` | `slideLeft` |
-
-### Zoom
-| Palavra-chave | Animação Gerada |
-|---------------|----------------|
 | `zoomin` | `zoomIn` |
 | `zoomout` | `zoomOut` |
 | `zoom` | `zoomIn` |
-
-### Premium
-| Palavra-chave | Animação Gerada |
-|---------------|----------------|
 | `spring` | `spring` |
 | `bounce` | `bounce` |
 | `elastic` | `elastic` |
 | `rotate` | `rotate` |
-
-### Scale
-| Palavra-chave | Animação Gerada |
-|---------------|----------------|
 | `scalein` | `scaleIn` |
 | `scaleout` | `scaleOut` |
 | `scale` | `scaleIn` |
-
-**Exemplo de uso no nome:**
-```
-UI_Button(Entrar) fadein
-UI_Window(Login) fadein scale
-UI_Input hover slideleft
-```
 
 ---
 
 ## 6. Temas
 
-Adicione palavras-chave de tema no nome do componente:
+Adicione `theme=` no nome:
+
+```
+UI_Button(Entrar) theme=primary
+UI_Button(Cancelar) theme=ghost
+UI_Input(Email) theme=outline
+UI_Window(Login) theme=dark
+```
 
 | Palavra-chave | Efeito |
 |---------------|--------|
-| `primary` | Tema primário |
-| `secondary` | Tema secundário |
-| `surface` | Tema de superfície |
-| `success` | Tema de sucesso (verde) |
-| `danger` | Tema de perigo (vermelho) |
-| `warning` | Tema de aviso (amarelo) |
-| `info` | Tema informativo (azul) |
-| `light` | Tema claro |
-| `dark` | Tema escuro |
-| `accent` | Tema de destaque |
-| `error` | Tema de erro |
-| `ghost` | Tema fantasma (transparente) |
-| `outline` | Tema outline (borda) |
-| `gradient` | Tema com gradiente |
-| `neon` | Tema neon |
-| `glow` | Tema com brilho |
-| `glass` | Tema vidro (glassmorphism) |
-
-**Exemplo de uso no nome:**
-```
-UI_Button(Entrar) primary
-UI_Button(Cancelar) ghost
-UI_Input(Email) outline
-UI_Window(Login) dark
-```
+| `primary` | Primário (azul) |
+| `secondary` | Secundário (cinza) |
+| `success` | Sucesso (verde) |
+| `danger` | Perigo (vermelho) |
+| `warning` | Aviso (amarelo) |
+| `info` | Informativo (azul claro) |
+| `light` | Claro |
+| `dark` | Escuro |
+| `ghost` | Fantasma (transparente) |
+| `outline` | Outline (borda) |
+| `neon` | Neon |
+| `glow` | Brilho |
+| `glass` | Vidro (glassmorphism) |
+| `gradient` | Gradiente |
+| `accent` | Destaque |
+| `error` | Erro |
+| `surface` | Superfície |
 
 ---
 
 ## 7. Ícones
 
-Adicione nomes de ícone no nome do botão:
+Adicione o nome do ícone no botão:
 
-| Palavra-chave | Ícone Gerado |
-|---------------|--------------|
+```
+UI_Button(Entrar) user
+UI_Button home
+UI_Button search
+```
+
+| Palavra | Ícone |
+|---------|-------|
 | `home` | 🏠 |
 | `user` | 👤 |
 | `settings` | ⚙️ |
@@ -470,11 +550,8 @@ Adicione nomes de ícone no nome do botão:
 | `mail` | ✉ |
 | `phone` | 📞 |
 | `camera` | 📷 |
-| `video` | 🎥 |
-| `music` | 🎵 |
 | `play` | ▶ |
 | `pause` | ⏸ |
-| `stop` | ⏹ |
 | `download` | ⬇ |
 | `upload` | ⬆ |
 | `trash` | 🗑 |
@@ -484,123 +561,76 @@ Adicione nomes de ícone no nome do botão:
 | `bell` | 🔔 |
 | `info` | ℹ |
 
-**Exemplo:**
-```
-UI_Button(Entrar) user
-UI_Button home
-UI_Button search
-```
-
 ---
 
 ## 8. Textos e Labels
 
-### Formato com parênteses
-
-O texto visível pode ser definido entre parênteses, colchetes ou chaves:
+### Parênteses (texto visível)
 
 ```
 UI_Title(Bem-vindo ao Servidor)
 UI_Button(Entrar)
 UI_Label[Email:]
 ```
-> O que estiver dentro dos parênteses vira o texto exibido.
 
-### Formato `text=valor`
+### Formato text=valor
 
 ```
 UI_Title text="Bem-vindo"
 UI_Button text=Entrar
 ```
 
-### Regras para `UI_Text` / `UI_Label` / `UI_Title`
-
-- Se você criar um nó **TEXT** no Figma (sem nenhum prefixo), ele será automaticamente detectado como `text`.
-- Mas para garantir o controle total, use os prefixos.
-
 ---
 
 ## 9. Dropdowns e Listas
 
-Para definir opções de um dropdown no nome:
-
-### Formato com colchetes
+### Colchetes
 ```
 UI_Dropdown(Sexo) options=[Masculino,Feminino,Outro]
 ```
 
-### Formato com pipe
+### Pipe
 ```
 UI_Dropdown(Cidade) options=São Paulo|Rio|BH
 ```
 
 ---
 
-## 10. Hierarquia Visual Final (Lua)
+## 10. Escala Responsiva
 
-Com base na estrutura do Figma, o exportador gera esta hierarquia em Lua:
+Se você desenhou o painel em **1366×768** mas quer que ele escale para qualquer resolução:
 
 ```
-[BACKGROUND - opacidade 0.5 preto]
-   ↓
-[UI_Window - card central]
-   ↓
-[UI_Title - nome do server]
-   ↓
-[UI_Input - campo de email]
-   ↓
-[UI_Input - campo de senha (masked)]
-   ↓
-[UI_Button - botão de login (primary)]
-   ↓
-[UI_Text - mensagem de status/erro]
+UI_Window(Login) responsive=true anchor=center
 ```
 
-### Exemplo Completo Funcional
+O sistema calcula: `scale = min(telaLargura / 1366, telaAltura / 768)`
 
-**No Figma (nome dos layers):**
-```
-📁 LoginPage (FRAME)
-   └── 🖼 UI_Window(Login) theme=dark anchor=center
-        ├── UI_Title(Vortex RP) align=center
-        ├── UI_Input(Email) placeholder="Digite seu email" animation=slideleft
-        ├── UI_Input(Senha) placeholder="Digite sua senha" masked=true
-        ├── UI_Button(Entrar) theme=primary hoverScale
-        └── UI_Text(Não tem conta? Registre-se) fontSize=12 align=center
-```
+Isso garante que o painel fique proporcional em monitores Full HD, 1440p ou superiores.
 
-**O que será gerado em Lua (conceito):**
-```lua
--- dxDrawRectangle fundo escuro
--- dxDrawRectangle card central
--- dxDrawText "Vortex RP" (título centralizado)
--- dxDrawRectangle input email + placeholder
--- dxDrawRectangle input senha (mascarado)
--- dxDrawRectangle botão com hover effect
--- dxDrawText "Não tem conta? Registre-se"
-```
+> ❌ Sem `responsive`: o painel mantém o tamanho exato que você desenhou.
+> ✅ Com `responsive=true`: o painel escala proporcionalmente.
 
 ---
 
 ## 11. Checklist de Validação
 
-Antes de exportar, verifique:
+Antes de exportar, confira:
 
-- [ ] **Frame raiz** tem o prefixo `UI_Window`
+- [ ] **Frame raiz** é `UI_Window`
 - [ ] **Botões** começam com `UI_Button` ou `Btn`
 - [ ] **Inputs** começam com `UI_Input` ou `UI_TextInput`
 - [ ] **Textos** começam com `UI_Text`, `UI_Label` ou `UI_Title`
 - [ ] **Imagens** começam com `UI_Image` ou `UI_Img`
 - [ ] **SVGs** começam com `UI_SVG` ou `UI_Svg`
-- [ ] Nomes **não têm espaços** no início
-- [ ] Propriedades usam formato `prop=valor`
-- [ ] Textos entre parênteses `(texto)` para conteúdo visível
-- [ ] Componentes têm **largura > 0** e **altura > 0**
-- [ ] Janela tem **dimensões entre 1 e 3840** de largura
-- [ ] IDs/nomes **não se repetem** (sem duplicatas)
-- [ ] Botões com `onClick` usam **nomes de função válidos** (sem espaços, sem caractéres especiais)
-- [ ] Inputs têm `placeholder` ou `defaultValue`
-- [ ] Cores de tema têm valores RGBA válidos
+- [ ] **Background** (opcional) é `UI_Background`
+- [ ] Sem espaços no início dos nomes
+- [ ] Propriedades usam `prop=valor`
+- [ ] Textos entre parênteses `(texto)`
+- [ ] Componentes têm largura > 0 e altura > 0
+- [ ] Janela entre 1 e 3840 de largura
+- [ ] IDs/nomes não se repetem
+- [ ] Inputs têm placeholder ou defaultValue
 
 ---
 
@@ -613,15 +643,16 @@ Antes de exportar, verifique:
 │   Todo layer começa com UI_ + Tipo + (texto) props       │
 │                                                          │
 │   ┌──────────────────────────────────────────────────┐   │
-│   │  UI_Window(Login) theme=dark                     │   │
+│   │  UI_Window(Login) anchor=center theme=dark       │   │
 │   │  ├─ UI_Title(Vortex) align=center                │   │
 │   │  ├─ UI_Input(Email) placeholder="Digite..."      │   │
 │   │  ├─ UI_Input(Senha) masked=true                  │   │
 │   │  └─ UI_Button(Entrar) theme=primary hover        │   │
 │   └──────────────────────────────────────────────────┘   │
 │                                                          │
-│   ✅ Funciona    ❌ Não funciona                         │
-│   UI_Button      MeuBotao                                │
-│   UI_Input       CampoTexto                              │
-│   UI_Window      FramePrincipal                          │
+│   ✅ Funciona      ❌ Não funciona                       │
+│   UI_Button        MeuBotao                               │
+│   UI_Window        FramePrincipal                         │
+│   UI_Background    FundoEscuro                            │
+│   UI_Input         CampoTexto                             │
 └──────────────────────────────────────────────────────────┘

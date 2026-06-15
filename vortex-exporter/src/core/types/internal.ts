@@ -7,6 +7,7 @@ export interface VoxelProject {
   version: string;
   meta: ProjectMeta;
   window: WindowConfig;
+  background?: WindowConfig;
   components: VoxelComponent[];
   assets: AssetRef[];
   theme: ThemeConfig;
@@ -33,6 +34,10 @@ export interface ProjectMeta {
 export interface WindowConfig {
   width: number;
   height: number;
+  x?: number;
+  y?: number;
+  baseWidth?: number;
+  baseHeight?: number;
   minWidth?: number;
   minHeight?: number;
   maxWidth?: number;
@@ -45,6 +50,10 @@ export interface WindowConfig {
   responsive?: boolean;
   clipsContent?: boolean;
   backgroundFills?: VoxelPaint[];
+  cornerRadius?: number;
+  alpha?: number;
+  strokes?: VoxelStroke[];
+  effects?: VoxelEffect[];
   layoutMode?: 'NONE' | 'HORIZONTAL' | 'VERTICAL';
   padding?: VoxelPadding;
   itemSpacing?: number;

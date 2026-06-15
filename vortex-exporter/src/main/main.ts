@@ -95,6 +95,45 @@ function startApp(): void {
   ipcMain.handle('open-in-explorer', async (_e: any, fp: string) => { shell.showItemInFolder(fp); });
 
   // ====================================================================
+  // COMPILE JSON TEXT - Compila texto JSON diretamente (sem arquivo)
+  // ====================================================================
+  ipcMain.handle('compile-json-text', async (_e: any, data: { jsonText: string; outputDir: string }) => {
+    try {
+      const { jsonText, outputDir } = data;
+      console.log(`[Vortex] JSON text compile started (${jsonText.length} bytes)`);
+      
+      const json: PanelJson = JSON.parse(jsonText);
+      console.log(`[Vortex] JSON parsed. Window: ${json.window?.width}x${json.window?.height}, Children: ${json.children?.length || 0}`);
+      
+      const project = convertPanelJsonToIR(json);
+      const issues = validateProject(project);
+      const errors = issues.filter((i: any) => i.type === 'error');
+      
+      if (errors.length > 0) {
+        console.log(`[Vortex] Validation errors: ${errors.length}`);
+        const allIssues = errors.map((x: any) => x.message);
+        const warnings = issues.filter((i: any) => i.type === 'warning').map((x: any) => x.message);
+        return { success: false, step: 'validation', issues: allIssues, warnings, luaCode: '' };
+      }
+      
+      const compiled = compileToLua(project);
+      const code = formatLuaCode(compiled.code);
+      
+      // Auto-save to output dir
+      if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
+      const name = project.meta.name.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+      const outPath = path.join(outputDir, `${name}.lua`);
+      fs.writeFileSync(outPath, code, 'utf-8');
+      
+      console.log(`[Vortex] JSON text compile success: ${outPath} (${compiled.lineCount} lines)`);
+      return { success: true, luaCode: code, outputPath: outPath, panelName: name, lineCount: compiled.lineCount, componentCount: project.components.length, warnings: [] };
+    } catch (err: any) {
+      console.error(`[Vortex] JSON text compile FAILED:`, err.message);
+      return { success: false, step: 'error', error: err.message, luaCode: '' };
+    }
+  });
+
+  // ====================================================================
   // JSON IMPORT - Compila um arquivo JSON de painel para Lua
   // ====================================================================
   ipcMain.handle('import-json', async (_e: any, data: { jsonPath: string; outputDir: string }) => {

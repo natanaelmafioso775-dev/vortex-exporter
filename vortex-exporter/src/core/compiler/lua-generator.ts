@@ -68,7 +68,7 @@ export function compileToLua(project: VoxelProject): CompileResult {
   if (hoverAnimCode) sections.push(hoverAnimCode);
 
   // === 10. RENDER (main onClientRender) ===
-  const renderCode = generateRenderCode(panelName, project.window, project.components);
+  const renderCode = generateRenderCode(panelName, project.window, project.components, project.background);
   sections.push(renderCode);
 
   // === 11. BUTTON EVENTS ===

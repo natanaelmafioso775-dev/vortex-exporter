@@ -11,6 +11,7 @@ interface ExportData {
 interface ExportResult {
   success: boolean;
   outputPath?: string;
+  luaCode?: string;
   panelName?: string;
   lineCount?: number;
   componentCount?: number;
@@ -39,6 +40,7 @@ declare global {
       openInExplorer: (filePath: string) => Promise<void>;
       importJson: (data: { jsonPath: string; outputDir: string }) => Promise<ExportResult>;
       selectJsonFile: () => Promise<{ cancelled: boolean; path?: string }>;
+      compileJsonText: (data: { jsonText: string; outputDir: string }) => Promise<ExportResult>;
     };
   }
 }
@@ -51,6 +53,8 @@ function App() {
   const [outputDir, setOutputDir] = useState('');
   const [saveToken, setSaveToken] = useState(true);
   const [jsonPath, setJsonPath] = useState('');
+  const [jsonText, setJsonText] = useState('');
+  const [luaCode, setLuaCode] = useState('');
   const [status, setStatus] = useState<StatusType>('idle');
   const [message, setMessage] = useState('');
   const [result, setResult] = useState<ExportResult | null>(null);
@@ -151,6 +155,53 @@ function App() {
     }
   }, [result]);
 
+  const handleCompileJsonText = useCallback(async () => {
+    if (!jsonText.trim()) {
+      setErrors(['JSON code is required']);
+      setStatus('error');
+      setMessage('Paste your JSON code first');
+      return;
+    }
+
+    setErrors([]);
+    setStatus('loading');
+    setMessage('Compiling JSON...');
+    setResult(null);
+    setLuaCode('');
+
+    try {
+      const compileResult = await window.vortex.compileJsonText({
+        jsonText: jsonText,
+        outputDir: outputDir.trim() || 'output',
+      });
+
+      if (compileResult.success && compileResult.luaCode) {
+        setLuaCode(compileResult.luaCode);
+        setStatus('success');
+        setResult(compileResult);
+        setMessage(`Compiled! ${compileResult.lineCount} lines of Lua`);
+      } else if (compileResult.step === 'validation') {
+        setStatus('validation-error');
+        setMessage('Validation failed');
+        setErrors(compileResult.issues || []);
+      } else {
+        setStatus('error');
+        setMessage(compileResult.error || 'Unknown error');
+      }
+    } catch (err: any) {
+      setStatus('error');
+      setMessage(err.message || 'Failed to compile JSON');
+    }
+  }, [jsonText, outputDir]);
+
+  const copyToClipboard = useCallback(async () => {
+    if (luaCode) {
+      await navigator.clipboard.writeText(luaCode);
+      setMessage('📋 Copied to clipboard!');
+      setTimeout(() => setMessage(''), 2000);
+    }
+  }, [luaCode]);
+
   const resetForm = useCallback(() => {
     setStatus('idle');
     setMessage('');
@@ -229,29 +280,85 @@ function App() {
             </>
           )}
 
-          {/* JSON File Mode */}
+          {/* JSON Editor Mode — 2 painéis: JSON (entrada) + Lua (saída) */}
           {mode === 'json' && (
-            <div className="form-group">
-              <label className="form-label">Panel JSON File</label>
-              <div className="input-with-btn">
-                <input
-                  className={`form-input ${status === 'error' && !jsonPath ? 'input-error' : ''}`}
-                  type="text"
-                  placeholder="Select a .json panel file..."
-                  value={jsonPath}
-                  readOnly
+            <>
+              {/* Painel de entrada: JSON */}
+              <div className="form-group">
+                <label className="form-label">📝 JSON Code (paste aqui)</label>
+                <textarea
+                  className="form-input editor-textarea"
+                  placeholder='Cole seu JSON aqui... ex: {"version":"1.0","window":{"width":400,"height":500},...}'
+                  value={jsonText}
+                  onChange={(e) => setJsonText(e.target.value)}
                   disabled={status === 'loading'}
+                  rows={8}
+                  style={{ resize: 'vertical', minHeight: '120px', fontFamily: 'monospace', fontSize: '11px' }}
                 />
-                <button className="btn btn-secondary btn-sm" onClick={handleSelectJsonFile} disabled={status === 'loading'}>
-                  Browse
-                </button>
               </div>
-              {jsonPath && (
-                <p style={{ color: '#93c5fd', fontSize: '12px', marginTop: '4px' }}>
-                  ✓ File selected: {jsonPath.split('\\').pop() || jsonPath.split('/').pop()}
-                </p>
-              )}
-            </div>
+
+              <button
+                className="btn btn-primary btn-full"
+                onClick={handleCompileJsonText}
+                disabled={status === 'loading' || !jsonText.trim()}
+                style={{ marginBottom: '16px' }}
+              >
+                {status === 'loading' ? (
+                  <><span className="spinner"></span> Compiling...</>
+                ) : (
+                  '🔧 Compilar JSON → Lua'
+                )}
+              </button>
+
+              {/* Painel de saída: Lua */}
+              <div className="form-group">
+                <label className="form-label">📄 Lua Output (copia pro MTA)</label>
+                <textarea
+                  className="form-input editor-textarea"
+                  placeholder="O código Lua aparecerá aqui após compilar..."
+                  value={luaCode}
+                  readOnly
+                  rows={10}
+                  style={{
+                    resize: 'vertical',
+                    minHeight: '150px',
+                    fontFamily: 'monospace',
+                    fontSize: '11px',
+                    background: '#0d1117',
+                    color: '#58a6ff',
+                    border: luaCode ? '1px solid #238636' : undefined,
+                  }}
+                />
+                {luaCode && (
+                  <button
+                    className="btn btn-secondary btn-full"
+                    onClick={copyToClipboard}
+                    style={{ marginTop: '8px' }}
+                  >
+                    📋 Copy Lua to Clipboard
+                  </button>
+                )}
+              </div>
+
+              {/* Também mantém opção de arquivo (alternativa) */}
+              <div className="form-group" style={{ marginTop: '8px', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
+                <label className="form-label" style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>Ou selecione um arquivo .json</label>
+                <div className="input-with-btn">
+                  <input
+                    className="form-input"
+                    type="text"
+                    placeholder="Selecionar arquivo..."
+                    value={jsonPath}
+                    readOnly
+                    disabled={status === 'loading'}
+                    style={{ fontSize: '11px', height: '32px' }}
+                  />
+                  <button className="btn btn-secondary btn-sm" onClick={handleSelectJsonFile} disabled={status === 'loading'} style={{ height: '32px', fontSize: '11px' }}>
+                    Browse
+                  </button>
+                </div>
+              </div>
+            </>
           )}
 
           {/* Output Folder (both modes) */}
